@@ -27,7 +27,28 @@
 #
 # [*fence_xvm_key_file_password*]
 #
-
+# [*fence_ovirt_ipaddr*]
+#
+# [*fence_ovirt_ipport*]
+#
+# [*fence_ovirt_login*]
+#
+# [*fence_ovirt_password*]
+#
+# [*fence_ovirt_powerwait*]
+#
+# [*fence_ovirt_ssl*]
+#
+# [*fence_ovirt_vmname*]
+#
+# [*fence_vmware_ipaddr*]
+#
+# [*fence_vmware_login*]
+#
+# [*fence_vmware_password*]
+#
+# [*fence_vmware_vmname*]
+#
 class quickstack::pacemaker::common (
   $pacemaker_cluster_name         = "openstack",
   $pacemaker_cluster_members      = "192.168.200.10 192.168.200.11 192.168.200.12",
@@ -44,6 +65,17 @@ class quickstack::pacemaker::common (
   $fence_xvm_clu_network          = "",
   $fence_xvm_manage_key_file      = "false",
   $fence_xvm_key_file_password    = "",
+  $fence_ovirt_ipaddr             = "",
+  $fence_ovirt_ipport             = "8443",
+  $fence_ovirt_login              = "",
+  $fence_ovirt_password           = "",
+  $fence_ovirt_powerwait          = "",
+  $fence_ovirt_ssl                = "true",
+  $fence_ovirt_vmname             = "",
+  $fence_vmware_ipaddr            = "",
+  $fence_vmware_login             = "",
+  $fence_vmware_password          = "",
+  $fence_vmware_vmname            = "",
 ) {
   include quickstack::pacemaker::params
 
@@ -102,9 +134,36 @@ class quickstack::pacemaker::common (
       port              => "$::hostname",    # the name of the vm
     }
   }
+  elsif $fencing_type =~ /(?i-mx:^fence_ovirt$)/ {
+    $fencing = true
+    class {'pacemaker::stonith':
+      disable => false,
+    }
+    class {'quickstack::pacemaker::stonith::ovirt':
+      ipaddr          => $fence_ovirt_ipaddr,
+      ipport          => $fence_ovirt_ipport,
+      login           => $fence_ovirt_login,
+      password        => $fence_ovirt_password,
+      powerwait       => $fence_ovirt_powerwait,
+      ssl             => str2bool_i("$fence_ovirt_ssl"),
+      vmname          => "$::hostname",
+    }
+  }
+  elsif $fencing_type =~ /(?i-mx:^fence_vmware$)/ {
+    $fencing = true
+    class {'pacemaker::stonith':
+      disable => false,
+    }
+    class {'quickstack::pacemaker::stonith::vmware':
+      ipaddr          => $fence_vmware_ipaddr,
+      login           => $fence_vmware_login,
+      password        => $fence_vmware_password,
+      vmname          => "$::hostname",
+    }
+  }
   else {
     $fencing = false
-    notify{"Unexpected value for parameter fencing_type: $fencing_type:.  Expect one of disabled, fence_ipmilan, or fence_xvm":
+    notify{"Unexpected value for parameter fencing_type: $fencing_type:.  Expect one of disabled, fence_ipmilan, fence_xvm, fence_ovirt, or fence_vmware":
       loglevel => alert,
     }
   }
